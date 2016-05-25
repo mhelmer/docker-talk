@@ -1,0 +1,579 @@
+
+.. Docker slides file, created by
+   hieroglyph-quickstart on Sun May 15 10:11:25 2016.
+
+.. role:: bash(code)
+   :language: bash
+
+
+======
+Docker
+======
+
+Build, Ship, Run
+
+
+Agenda
+======
+
+- WTF is Docker?
+- Dockerhub
+- Multi-containers with Docker Compose
+- Example setup
+- Mounting volumes in development
+   
+
+WTF is Docker?
+==============
+
+So, what is Docker, you may ask?
+
+.. image:: images/docker_vector_h-dark-trans.svg
+   :width: 25 %
+
+Docker is a container engine that allows you to run applications in isolated environments.
+
+Containers are similar to VMs, but they share the kernel with the host system.
+
+In a VM, the hardware needs to be virtualized. This adds complexity and overhead.
+
+A container includes all libraries and binaries that are needed to run the application.
+
+Modern linux kernels allow the docker engine to run containers in a subspace of the kernel with control groups etc.
+
+VM vs Docker
+############
+
+.. image:: images/what-is-docker-diagram.png
+   :width: 400
+
+.. image:: images/what-is-vm-diagram.png
+   :width: 400
+
+
+Serving this presentation with Docker
+=====================================
+
+Set up ``Dockerfile`` to run a python http server with files in ``srv/remark``.
+
+.. literalinclude:: ../Dockerfile
+   :language: Dockerfile
+
+Run to build ``index.rst`` and serve result.
+
+.. code-block:: bash
+
+    docker build -t hieroglyph .
+    docker run -it --rm --volume=$PWD:/srv/hieroglyph \
+    --publish=8001:8001 hieroglyph
+
+
+That's nice and all, but what can I use it for?
+===============================================
+
+Dockerhub holds a collection of image repositiories. Those can be used as a base for your own images.
+
+Some popular official repositiories:
+
+.. image:: images/busybox.png
+   :height: 100
+
+.. image:: images/go.png
+   :height: 100
+
+.. image:: images/jenkins.png
+   :height: 100
+
+.. image:: images/logstash.png
+   :height: 100
+
+.. image:: images/memcached.svg
+   :height: 100
+
+.. image:: images/nginx.png
+   :height: 50
+
+.. image:: images/nodejs-new-pantone-white.svg
+   :height: 100
+
+.. rst-class:: whitebg
+
+    .. image:: images/postgresql.png
+       :height: 100
+
+.. image:: images/python.png
+   :height: 100
+
+.. rst-class:: whitebg
+
+    .. image:: images/java.png
+       :height: 100
+
+.. image:: images/redis.png
+   :height: 50
+
+.. rst-class:: whitebg
+
+    .. image:: images/maven.png
+       :height: 50
+
+
+Multiple containers
+===================
+
+So, let's say you are building a python web app with JavaScript frontend.
+
+- ``NGINX``: routing, static files and load balancing
+- ``NodeJS``: universal server-side frontend rendering
+- ``Django`` + ``uWSGI``: Running the backend/API
+- ``PostgreSQL``: Database
+- ``Memcached``: Caching
+- ``RabbitMQ``: Message broker
+
+You can set up docker builds for each of those, and run them isolated from your host system.
+
+
+Let's try something real
+========================
+
+How about these containers?
+
+- ``nginx``
+- ``uWSGI+Django``
+- ``PostgreSQL``
+- ``NodeJS+Webpack``
+
+
+Container Dependencies
+######################
+
+.. image:: images/django-node-app.svg
+   :width: 75 %
+   :align: center
+
+
+Connecting Containers
+#####################
+
+.. code-block:: console
+
+    $ docker run --help
+      --link=[]           Add link to another container
+      --volumes-from=[]   Mount volumes from the specified container(s)
+
+
+After building all containers with ``docker build -t <tag> .`` we can now link containers and volumes as we require.
+
+.. code-block:: bash
+
+    db=$(docker run -d postgres:latest)
+    django=$(docker run -d -v /srv/django/static --link $db:db django-tag)
+    nodejs=$(docker run -d -v /srv/react/dist nodejs-tag)
+    nginx=$(docker run -d \
+            --link $django:django --volumes-from $django \
+            --volumes-from nodejs nginx-tag)
+
+But ugh... that's a lot of commands just to get the application running.
+
+
+Docker Compose to the rescue!
+=============================
+
+Docker compose let's you define a multi container app in a single file.
+
+This allows you to run the full application using a single command.
+
+.. image:: images/Compose.png
+   :width: 20 %
+
+
+Corresponding compose file
+##########################
+
+.. rst-class:: tinycode
+
+    .. literalinclude:: ../code/nodejs/docker-compose.yml
+       :language: yaml
+
+
+Django setup
+============
+
+Install the default django project
+
+.. code-block:: bash
+
+    mkdir -p django/src && cd $_
+    django-admin startproject project . && cd -
+
+Structure: ::
+
+    .
+    └── django
+        ├── Dockerfile
+        ├── requirements.txt
+        └── src
+            ├── manage.py
+            ├── project
+            │   ├── ...
+            │   └── wsgi.py
+            ├── requirements.txt
+            └── uwsgi.ini
+
+Python dependencies
+###################
+
+The app will run as user ``django`` inside a ``virtualenv``:
+
+.. literalinclude:: ../code/uwsgi-nginx/django/requirements.txt
+
+Dependencies for a basic Django REST Framework app using PostgreSQL and uWSGI.
+
+.. literalinclude:: ../code/uwsgi-nginx/django/src/requirements.txt
+
+
+uWSGI
+#####
+
+uWSGI settings for running in virtualenv as the user ``django``:
+
+.. literalinclude:: ../code/uwsgi-nginx/django/src/uwsgi.ini
+   :language: ini
+
+
+Dockerizing Django
+==================
+
+.. rst-class:: mediumcode
+
+    .. literalinclude:: ../code/uwsgi-nginx/django/Dockerfile
+       :language: Dockerfile
+       :linenos:
+       :lineno-match:
+       :emphasize-lines: 29,31
+
+
+Entrypoint
+##########
+
+The ``CMD`` command from the ``Dockerfile`` will be passed as arguments to ``entrypoint``, which is the bash-script below.
+The same applies if a command is supplied to ``docker run``.
+
+
+It creates the ``virtualenv`` if it doesn't already exist, activates it, then applies database migrations and collects static files.
+
+.. literalinclude:: ../code/uwsgi-nginx/django/entrypoint
+   :language: bash
+
+
+Nginx
+=====
+
+.. literalinclude:: ../code/uwsgi-nginx/nginx/config/site.conf
+   :language: nginx
+
+
+Nginx Dockerfile
+################
+
+This docker build will copy ``site.conf`` to ``default.conf``.
+The base image already has a ``CMD`` that will start Nginx.
+
+.. literalinclude:: ../code/uwsgi-nginx/nginx/Dockerfile
+   :language: Dockerfile
+
+The compose file
+################
+
+Let's connect them using ``docker-compose``:
+
+.. literalinclude:: ../code/uwsgi-nginx/docker-compose.yml
+   :language: yaml
+
+
+Starting it up
+##############
+
+To run this, simple execute
+
+.. code-block:: bash
+
+    docker-compose build
+    docker-compose up
+
+Nice, it's running!
+
+.. rst-class:: tinycode
+
+    .. code-block:: console
+
+        $ docker-compose ps
+               Name                     Command               State               Ports
+        -----------------------------------------------------------------------------------------------------
+        uwsginginx_django_1   /usr/local/bin/entrypoint  ...   Up      8000/tcp
+        uwsginginx_nginx_1    nginx -g daemon off;             Up      443/tcp, 0.0.0.0:8080->80/tcp
+
+Well, that wasn't too crazy. But wait... We forgot ``PostgreSQL`` and we are using ``SQLite`` as database backend. :(
+
+
+Adding postgres
+===============
+
+Removing ``dbdata`` and adding a link between the ``django`` and ``db`` containers.
+
+.. rst-class:: mediumcode
+
+    .. literalinclude:: ../code/postgres/docker-compose.yml
+        :diff: ../code/uwsgi-nginx/docker-compose.yml
+
+
+Update Django settings
+######################
+
+Swap out the database settings.
+
+.. literalinclude:: ../code/postgres/django/src/project/settings.py
+    :diff: ../code/uwsgi-nginx/django/src/project/settings.py
+    :lines: 1-15
+
+
+Build and run!
+##############
+
+To start it, we first need to run the database migrations against the db container.
+
+.. code-block:: bash
+
+    docker-compose build
+    docker-compose run django ./bootstrap-dev
+    docker-compose up
+
+
+JavaScript frontend
+===================
+
+We use a ``React`` with ``Redux`` to manage application state. We use ``Webpack`` via ``NodeJS API`` to build a bundle from ``index.jsx`` and output into ``dist``.
+
+::
+
+    .
+    ├── app
+    │   ├── actions [d]
+    │   ├── components [d]
+    │   ├── containers [d]
+    │   ├── reducers [d]
+    │   ├── store [d]
+    │   ├── styles [d]
+    │   ├── index.html
+    │   └── index.jsx
+    ├── dist [d]
+    ├── package.json
+    ├── server.js
+    └── webpack.config.js
+
+
+Webpack config
+##############
+
+Webpack will bundle our ``ES6`` code into a single bundle using ``babel``.
+
+We use ``webpack dev server`` to serve the app and proxy requests to the ``REST API`` during development.
+
+.. rst-class:: tinycode
+
+    .. literalinclude:: ../code/nodejs/react/src/webpack.config.js
+       :language: javascript
+       :lines: 1-18
+       :emphasize-lines: 12,17
+
+
+A bunch of JS packages
+######################
+
+How an 11 line code dependency manages to break everything
+
+.. rst-class:: minicode
+
+    .. literalinclude:: ../code/nodejs/react/src/package.json
+       :language: javascript
+       :lines: 12-43
+
+
+
+The Dockerfile
+##############
+
+.. literalinclude:: ../code/nodejs/react/Dockerfile
+   :language: Dockerfile
+   :emphasize-lines: 29,31
+
+
+The compose file
+################
+
+Let's add the ``react`` to ``docker-compose.yml`` and add a link for the data volume.
+
+.. rst-class:: mediumcode
+
+    .. literalinclude:: ../code/nodejs/docker-compose.yml
+        :diff: ../code/postgres/docker-compose.yml
+
+
+Nginx config update
+###################
+
+Let ``nginx`` handle routing and static files. It's pretty good at that!
+
+.. rst-class:: tinycode
+
+    .. literalinclude:: ../code/nodejs/nginx/config/site.conf
+        :diff: ../code/postgres/nginx/config/site.conf
+
+
+You know this step by now!
+##########################
+
+Let's fire it up:
+
+.. code-block:: bash
+
+    docker-compose build
+    docker-compose run django ./bootstrap-dev
+    docker-compose up
+
+We're up and running. The ``react`` container exited early since it just had a build step.
+
+.. rst-class:: tinycode
+
+    .. code-block:: console
+
+        $ docker-compose ps
+             Name                    Command               State                Ports
+        -----------------------------------------------------------------------------------------
+        nodejs_db_1       /docker-entrypoint.sh postgres   Up       5432/tcp
+        nodejs_django_1   /usr/local/bin/entrypoint  ...   Up       8000/tcp
+        nodejs_nginx_1    nginx -g daemon off;             Up       443/tcp, 0.0.0.0:8080->80/tcp
+        nodejs_react_1    webpack                          Exit 0
+
+
+Making it dev-friendly
+======================
+
+Expose ``webpack-dev-server`` from the react container. We don't want to build containers everytime we change the code. Let's mount some volumes!
+
+.. rst-class:: minicode
+ 
+    .. literalinclude:: ../code/dev/docker-compose.dev.yml
+       :language: yaml
+
+
+Build, Run, Have fun
+####################
+
+The usual stuff, but we also need to install ``node`` and ``python`` packages in the mounted volumes.
+
+.. code-block:: bash
+
+    docker-compose -f docker-compose.dev.yml build
+    docker-compose -f docker-compose.dev.yml run django ./bootstrap-dev
+    docker-compose -f docker-compose.dev.yml run react npm install
+    docker-compose -f docker-compose.dev.yml up
+
+
+Docker Machine
+==============
+
+Provisioning can be automated with Docker Machine.
+
+.. image:: images/machine.png
+   :width: 25 %
+
+It can be used to set up Docker in a local VM or on cloud providers. It can configure your local Docker client to transparently talk to remote Docker Engines.
+
+
+Cross platform support
+######################
+
+If you are on a non-linux system, you can run the docker daemon in a VM using ``docker-machine``. Provision a local VM with
+
+.. code-block:: bash
+
+    docker-machine create
+
+This will create a VM with the name ``default``. To make docker talk to the new machine, we need to set some ``ENV``-variables
+
+.. code-block:: console
+
+    $ docker-machine env default
+    export DOCKER_TLS_VERIFY="1"
+    export DOCKER_HOST="tcp://172.16.62.130:2376"
+    export DOCKER_CERT_PATH="/Users/<yourusername>/.docker/machine/machines/default"
+    export DOCKER_MACHINE_NAME="default"
+    # Run this command to configure your shell:
+    # eval "$(docker-machine env default)"
+
+Don't worry, Docker for Windows and OS X is in beta!
+
+
+
+Provision hosts on cloud providers
+##################################
+
+Docker Machine can also be used to provision hosts on the cloud, e.g. AWS:
+
+.. code-block:: bash
+
+    docker-machine create --driver amazonec2 \
+        --amazonec2-access-key AKI******* --amazonec2-secret-key 8T93C******* \
+        aws-sandbox
+
+Some other drivers include:
+
+- Microsoft Azure
+- Digital Ocean
+- Google Compute Engine
+- OpenStack
+
+You can also create machines on existing VMs/hosts with the generic driver
+
+.. code-block:: bash
+
+    docker-machine create --driver generic --generic-ip-address=<ip> \
+        --generic-ssh-key=$HOME/.ssh/id_rsa <name>
+
+
+Docker Swarm
+============
+
+Docker Swarm provides native clustering for Docker. It turns multiple hosts into a single virtual Docker host.
+
+.. image:: images/docker-swarm-hero2.png
+   :width: 25 %
+
+It serves the standard Docker API, so you can still use tools like ``docker-compose`` and scale up to thousands of nodes.
+
+
+Recap
+=====
+
+.. image:: images/docker_vector_h-dark-trans.svg
+   :width: 25 %
+
+.. image:: images/Compose.png
+   :width: 10 %
+
+.. image:: images/machine.png
+   :width: 10 %
+
+.. image:: images/docker-swarm-hero2.png
+   :width: 10 %
+
+- Docker Engine to manage single containers
+- Docker Compose for multi-container applications
+- Docker Machine to manage remote Docker hosts
+- Docker Swarm to turn a pool of Docker hosts into a single virtual host
+
+Thank you!
+==========
+
+Questions?

@@ -1,0 +1,1048 @@
+<!--
+Google IO 2012/2013 HTML5 Slide Template
+
+Authors: Eric Bidelman <ebidel@gmail.com>
+         Luke Mahé <lukem@google.com>
+
+URL: https://code.google.com/p/io-2012-slides
+--><!DOCTYPE html>
+
+
+<html>
+<head>
+  <title>Docker &mdash; Docker</title>
+  <meta charset="utf-8">
+  
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">-->
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+  <!--This one seems to work all the time, but really small on ipad-->
+  <!--<meta name="viewport" content="initial-scale=0.4">-->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+
+  <meta name="hieroglyph-title" data-config-title>
+  <meta name="hieroglyph-subtitle" data-config-subtitle>
+  <meta name="hieroglyph-presenter" data-config-presenter>
+
+  
+  <link rel="stylesheet" media="all"
+        href="_static/theme/css/default.css">
+  <link rel="stylesheet" media="all"
+        href="_static/theme/css/hieroglyph.css">
+  <link rel="stylesheet" media="only screen and (max-device-width: 480px)"
+        href="_static/theme/css/phone.css">
+
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  
+  <link rel="stylesheet" href="_static/gruvbox.css"
+        type="text/css" />
+  
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->
+  
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '2016.05.15',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+
+    <script data-main="_static/js/slides"
+            src="_static/js/require-1.0.8.min.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    
+    <link rel="top" title="Docker" href="#" /> 
+</head>
+<body style="opacity: 0">
+
+<slides class="layout-widescreen">
+
+  
+
+  
+    <slide class="title-slide segue nobackground level-1" id="docker">
+    <hgroup>
+      <h1>Docker</h1>
+    </hgroup>
+    <article class="">
+      <p>Build, Ship, Run</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="agenda">
+    <hgroup>
+      <h2>Agenda</h2>
+    </hgroup>
+    <article class="">
+      <ul class="simple">
+<li>WTF is Docker?</li>
+<li>Dockerhub</li>
+<li>Multi-containers with Docker Compose</li>
+<li>Example setup</li>
+<li>Mounting volumes in development</li>
+</ul>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="wtf-is-docker">
+    <hgroup>
+      <h2>WTF is Docker?</h2>
+    </hgroup>
+    <article class="">
+      <p>So, what is Docker, you may ask?</p>
+<a class="reference internal image-reference" href="_images/docker_vector_h-dark-trans.svg"><img src="_images/docker_vector_h-dark-trans.svg" width="25%" /></a>
+<p>Docker is a container engine that allows you to run applications in isolated environments.</p>
+<p>Containers are similar to VMs, but they share the kernel with the host system.</p>
+<p>In a VM, the hardware needs to be virtualized. This adds complexity and overhead.</p>
+<p>A container includes all libraries and binaries that are needed to run the application.</p>
+<p>Modern linux kernels allow the docker engine to run containers in a subspace of the kernel with control groups etc.</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="vm-vs-docker">
+    <hgroup>
+      <h3>VM vs Docker</h3>
+    </hgroup>
+    <article class="">
+      <a class="reference internal image-reference" href="_images/what-is-docker-diagram.png"><img alt="_images/what-is-docker-diagram.png" src="_images/what-is-docker-diagram.png" style="width: 400px;" /></a>
+<a class="reference internal image-reference" href="_images/what-is-vm-diagram.png"><img alt="_images/what-is-vm-diagram.png" src="_images/what-is-vm-diagram.png" style="width: 400px;" /></a>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="serving-this-presentation-with-docker">
+    <hgroup>
+      <h2>Serving this presentation with Docker</h2>
+    </hgroup>
+    <article class="">
+      <p>Set up <code class="docutils literal"><span class="pre">Dockerfile</span></code> to run a python http server with files in <code class="docutils literal"><span class="pre">srv/remark</span></code>.</p>
+<div class="highlight-Dockerfile"><div class="highlight"><pre><span></span><span class="k">FROM</span><span class="s">     python:3.5</span>
+
+<span class="k">RUN</span>     <span class="o">[</span><span class="s2">&quot;pip&quot;</span>, <span class="s2">&quot;install&quot;</span>, <span class="s2">&quot;sphinx&quot;</span>, <span class="s2">&quot;sphinx-autobuild&quot;</span>, <span class="s2">&quot;pygments&quot;</span><span class="o">]</span>
+<span class="k">RUN</span>     <span class="o">[</span><span class="s2">&quot;pip&quot;</span>, <span class="s2">&quot;install&quot;</span>, <span class="s2">&quot;git+https://github.com/nyergler/hieroglyph#egg=hieroglyph&quot;</span><span class="o">]</span>
+
+<span class="k">RUN</span>     <span class="o">[</span><span class="s2">&quot;mkdir&quot;</span>, <span class="s2">&quot;-p&quot;</span>, <span class="s2">&quot;/srv/hieroglyph&quot;</span><span class="o">]</span>
+
+<span class="k">WORKDIR</span><span class="s"> /srv/hieroglyph</span>
+<span class="k">EXPOSE</span><span class="s">  8001</span>
+<span class="k">CMD</span><span class="s">     [&quot;make&quot;, &quot;liveslides&quot;]</span>
+</pre></div>
+</div>
+<p>Run to build <code class="docutils literal"><span class="pre">index.rst</span></code> and serve result.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker build -t hieroglyph .
+docker run -it --rm --volume<span class="o">=</span><span class="nv">$PWD</span>:/srv/hieroglyph <span class="se">\</span>
+--publish<span class="o">=</span>8001:8001 hieroglyph
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="that-s-nice-and-all-but-what-can-i-use-it-for">
+    <hgroup>
+      <h2>That's nice and all, but what can I use it for?</h2>
+    </hgroup>
+    <article class="">
+      <p>Dockerhub holds a collection of image repositiories. Those can be used as a base for your own images.</p>
+<p>Some popular official repositiories:</p>
+<a class="reference internal image-reference" href="_images/busybox.png"><img alt="_images/busybox.png" src="_images/busybox.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="_images/go.png"><img alt="_images/go.png" src="_images/go.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="_images/jenkins.png"><img alt="_images/jenkins.png" src="_images/jenkins.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="_images/logstash.png"><img alt="_images/logstash.png" src="_images/logstash.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="_images/memcached.svg"><img height="100" src="_images/memcached.svg" /></a>
+<a class="reference internal image-reference" href="_images/nginx.png"><img alt="_images/nginx.png" src="_images/nginx.png" style="height: 50px;" /></a>
+<a class="reference internal image-reference" href="_images/nodejs-new-pantone-white.svg"><img height="100" src="_images/nodejs-new-pantone-white.svg" /></a>
+<a class="whitebg reference internal image-reference" href="_images/postgresql.png"><img alt="_images/postgresql.png" class="whitebg" src="_images/postgresql.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="_images/python.png"><img alt="_images/python.png" src="_images/python.png" style="height: 100px;" /></a>
+<a class="whitebg reference internal image-reference" href="_images/java.png"><img alt="_images/java.png" class="whitebg" src="_images/java.png" style="height: 100px;" /></a>
+<a class="reference internal image-reference" href="_images/redis.png"><img alt="_images/redis.png" src="_images/redis.png" style="height: 50px;" /></a>
+<a class="whitebg reference internal image-reference" href="_images/maven.png"><img alt="_images/maven.png" class="whitebg" src="_images/maven.png" style="height: 50px;" /></a>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="multiple-containers">
+    <hgroup>
+      <h2>Multiple containers</h2>
+    </hgroup>
+    <article class="">
+      <p>So, let's say you are building a python web app with JavaScript frontend.</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">NGINX</span></code>: routing, static files and load balancing</li>
+<li><code class="docutils literal"><span class="pre">NodeJS</span></code>: universal server-side frontend rendering</li>
+<li><code class="docutils literal"><span class="pre">Django</span></code> + <code class="docutils literal"><span class="pre">uWSGI</span></code>: Running the backend/API</li>
+<li><code class="docutils literal"><span class="pre">PostgreSQL</span></code>: Database</li>
+<li><code class="docutils literal"><span class="pre">Memcached</span></code>: Caching</li>
+<li><code class="docutils literal"><span class="pre">RabbitMQ</span></code>: Message broker</li>
+</ul>
+<p>You can set up docker builds for each of those, and run them isolated from your host system.</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="let-s-try-something-real">
+    <hgroup>
+      <h2>Let's try something real</h2>
+    </hgroup>
+    <article class="">
+      <p>How about these containers?</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">nginx</span></code></li>
+<li><code class="docutils literal"><span class="pre">uWSGI+Django</span></code></li>
+<li><code class="docutils literal"><span class="pre">PostgreSQL</span></code></li>
+<li><code class="docutils literal"><span class="pre">NodeJS+Webpack</span></code></li>
+</ul>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="container-dependencies">
+    <hgroup>
+      <h3>Container Dependencies</h3>
+    </hgroup>
+    <article class="">
+      <a class="reference internal image-reference" href="_images/django-node-app.svg"><div align="center" class="align-center"><img src="_images/django-node-app.svg" width="75%" /></div>
+</a>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="connecting-containers">
+    <hgroup>
+      <h3>Connecting Containers</h3>
+    </hgroup>
+    <article class="">
+      <div class="highlight-console"><div class="highlight"><pre><span></span><span class="gp">$</span> docker run --help
+<span class="go">  --link=[]           Add link to another container</span>
+<span class="go">  --volumes-from=[]   Mount volumes from the specified container(s)</span>
+</pre></div>
+</div>
+<p>After building all containers with <code class="docutils literal"><span class="pre">docker</span> <span class="pre">build</span> <span class="pre">-t</span> <span class="pre">&lt;tag&gt;</span> <span class="pre">.</span></code> we can now link containers and volumes as we require.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="nv">db</span><span class="o">=</span><span class="k">$(</span>docker run -d postgres:latest<span class="k">)</span>
+<span class="nv">django</span><span class="o">=</span><span class="k">$(</span>docker run -d -v /srv/django/static --link <span class="nv">$db</span>:db django-tag<span class="k">)</span>
+<span class="nv">nodejs</span><span class="o">=</span><span class="k">$(</span>docker run -d -v /srv/react/dist nodejs-tag<span class="k">)</span>
+<span class="nv">nginx</span><span class="o">=</span><span class="k">$(</span>docker run -d <span class="se">\</span>
+        --link <span class="nv">$django</span>:django --volumes-from <span class="nv">$django</span> <span class="se">\</span>
+        --volumes-from nodejs nginx-tag<span class="k">)</span>
+</pre></div>
+</div>
+<p>But ugh... that's a lot of commands just to get the application running.</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="docker-compose-to-the-rescue">
+    <hgroup>
+      <h2>Docker Compose to the rescue!</h2>
+    </hgroup>
+    <article class="">
+      <p>Docker compose let's you define a multi container app in a single file.</p>
+<p>This allows you to run the full application using a single command.</p>
+<a class="reference internal image-reference" href="_images/Compose.png"><img alt="_images/Compose.png" src="_images/Compose.png" style="width: 20%;" /></a>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="corresponding-compose-file">
+    <hgroup>
+      <h3>Corresponding compose file</h3>
+    </hgroup>
+    <article class="">
+      <div class="tinycode highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">django</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./django</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">/srv/django/static</span>
+    <span class="l l-Scalar l-Scalar-Plain">links</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">db:db</span>
+
+<span class="l l-Scalar l-Scalar-Plain">nginx</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./nginx</span>
+    <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="s">&quot;8080:80&quot;</span>
+    <span class="l l-Scalar l-Scalar-Plain">links</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">django:django</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes_from</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">django</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">react</span>
+
+<span class="l l-Scalar l-Scalar-Plain">react</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./react</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">/srv/react/dist</span>
+
+<span class="l l-Scalar l-Scalar-Plain">db</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">postgres</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="django-setup">
+    <hgroup>
+      <h2>Django setup</h2>
+    </hgroup>
+    <article class="">
+      <p>Install the default django project</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>mkdir -p django/src <span class="o">&amp;&amp;</span> <span class="nb">cd</span> <span class="nv">$_</span>
+django-admin startproject project . <span class="o">&amp;&amp;</span> <span class="nb">cd</span> -
+</pre></div>
+</div>
+<p>Structure:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>.
+└── django
+    ├── Dockerfile
+    ├── requirements.txt
+    └── src
+        ├── manage.py
+        ├── project
+        │   ├── ...
+        │   └── wsgi.py
+        ├── requirements.txt
+        └── uwsgi.ini
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="python-dependencies">
+    <hgroup>
+      <h3>Python dependencies</h3>
+    </hgroup>
+    <article class="">
+      <p>The app will run as user <code class="docutils literal"><span class="pre">django</span></code> inside a <code class="docutils literal"><span class="pre">virtualenv</span></code>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># django/requirements.txt </span>
+<span class="n">virtualenv</span><span class="o">==</span><span class="mf">14.0</span><span class="o">.</span><span class="mi">6</span>
+</pre></div>
+</div>
+<p>Dependencies for a basic Django REST Framework app using PostgreSQL and uWSGI.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="c1"># django/src/requirements.txt </span>
+<span class="n">Django</span><span class="o">==</span><span class="mf">1.9</span><span class="o">.</span><span class="mi">6</span>
+<span class="n">uWSGI</span><span class="o">==</span><span class="mf">2.0</span><span class="o">.</span><span class="mi">12</span>
+<span class="n">psycopg2</span>
+<span class="n">djangorestframework</span><span class="o">==</span><span class="mf">3.3</span><span class="o">.</span><span class="mi">3</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="uwsgi">
+    <hgroup>
+      <h3>uWSGI</h3>
+    </hgroup>
+    <article class="">
+      <p>uWSGI settings for running in virtualenv as the user <code class="docutils literal"><span class="pre">django</span></code>:</p>
+<div class="highlight-ini"><div class="highlight"><pre><span></span><span class="c1"># django/src/uwsgi.ini </span>
+<span class="k">[uwsgi]</span>
+
+<span class="na">chdir</span>           <span class="o">=</span> <span class="s">/srv/django</span>
+<span class="na">module</span>          <span class="o">=</span> <span class="s">project.wsgi</span>
+<span class="na">home</span>            <span class="o">=</span> <span class="s">/srv/django/.env</span>
+
+<span class="na">master</span>          <span class="o">=</span> <span class="s">true</span>
+<span class="na">processes</span>       <span class="o">=</span> <span class="s">10</span>
+<span class="na">enable-threads</span>  <span class="o">=</span> <span class="s">true</span>
+<span class="na">socket</span>          <span class="o">=</span> <span class="s">:8000</span>
+<span class="na">logfile</span>         <span class="o">=</span> <span class="s">/srv/django/uwsgi.log</span>
+
+<span class="na">vacuum</span>          <span class="o">=</span> <span class="s">true</span>
+<span class="na">touch-reload</span>    <span class="o">=</span> <span class="s">/srv/django/uwsgi.ini</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="dockerizing-django">
+    <hgroup>
+      <h2>Dockerizing Django</h2>
+    </hgroup>
+    <article class="">
+      <div class="mediumcode highlight-Dockerfile"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="c"># django/Dockerfile</span>
+<span class="k">FROM</span><span class="s"> python:3.5</span>
+
+COPY entrypoint /usr/local/bin/entrypoint
+
+<span class="k">RUN</span> mkdir -p /usr/src/app
+COPY requirements.txt /usr/src/app/
+<span class="k">RUN</span> pip install --no-cache-dir -r /usr/src/app/requirements.txt
+
+<span class="c"># Create django user, will own the Django app</span>
+<span class="k">RUN</span> useradd -s /bin/bash --uid <span class="m">1000</span> --home-dir /srv/django django
+
+<span class="c"># Add code</span>
+COPY ./src /srv/django
+
+<span class="k">WORKDIR</span><span class="s"> /srv/django</span>
+<span class="k">RUN</span> chown -R django:django .
+USER django
+
+<span class="k">RUN</span> /bin/bash -c <span class="s2">&quot;virtualenv /srv/django/.env \</span>
+<span class="s2">    &amp;&amp; source /srv/django/.env/bin/activate \</span>
+<span class="s2">    &amp;&amp; pip install -r /srv/django/requirements.txt&quot;</span>
+
+<span class="k">EXPOSE</span><span class="s"> 8000</span>
+<span class="k">RUN</span> mkdir static
+<span class="k">RUN</span> mkdir dbdata
+
+<span class="k">ENTRYPOINT</span><span class="s"> [&quot;/usr/local/bin/entrypoint&quot;]</span>
+<span class="hll"><span class="c"># Execute start script</span>
+</span><span class="k">CMD</span><span class="s"> [&quot;uwsgi&quot;, &quot;/srv/django/uwsgi.ini&quot;]</span>
+</pre></div>
+</td></tr></table></div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="entrypoint">
+    <hgroup>
+      <h3>Entrypoint</h3>
+    </hgroup>
+    <article class="">
+      <p>The <code class="docutils literal"><span class="pre">CMD</span></code> command from the <code class="docutils literal"><span class="pre">Dockerfile</span></code> will be passed as arguments to <code class="docutils literal"><span class="pre">entrypoint</span></code>, which is the bash-script below.
+The same applies if a command is supplied to <code class="docutils literal"><span class="pre">docker</span> <span class="pre">run</span></code>.</p>
+<p>It creates the <code class="docutils literal"><span class="pre">virtualenv</span></code> if it doesn't already exist, activates it, then applies database migrations and collects static files.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env bash</span>
+<span class="nv">COMMAND</span><span class="o">=</span><span class="nv">$@</span>
+<span class="k">if</span> <span class="o">[</span> ! -d <span class="s2">&quot;.env&quot;</span> <span class="o">]</span><span class="p">;</span> <span class="k">then</span>
+	virtualenv .env
+<span class="k">fi</span>
+<span class="nb">source</span> .env/bin/activate
+./manage.py migrate
+./manage.py collectstatic --no-input
+<span class="nv">$COMMAND</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="nginx">
+    <hgroup>
+      <h2>Nginx</h2>
+    </hgroup>
+    <article class="">
+      <div class="highlight-nginx"><div class="highlight"><pre><span></span><span class="k">upstream</span> <span class="s">django</span> <span class="p">{</span>
+    <span class="kn">server</span> <span class="n">django</span><span class="p">:</span><span class="mi">8000</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">server</span> <span class="p">{</span>
+    <span class="kn">listen</span> <span class="mi">80</span> <span class="s">default_server</span><span class="p">;</span>
+    <span class="kn">server_name</span> <span class="s">example.com</span><span class="p">;</span>
+    <span class="kn">charset</span> <span class="s">utf-8</span><span class="p">;</span>
+
+    <span class="kn">location</span> <span class="s">/static/</span> <span class="p">{</span> <span class="c1"># STATIC_URL</span>
+        <span class="kn">alias</span> <span class="s">/srv/django/static/</span><span class="p">;</span> <span class="c1"># STATIC_ROOT</span>
+        <span class="kn">expires</span> <span class="s">30d</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kn">location</span> <span class="s">/</span> <span class="p">{</span>
+        <span class="kn">include</span> <span class="s">uwsgi_params</span><span class="p">;</span>
+        <span class="kn">uwsgi_pass</span> <span class="s">django</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="nginx-dockerfile">
+    <hgroup>
+      <h3>Nginx Dockerfile</h3>
+    </hgroup>
+    <article class="">
+      <p>This docker build will copy <code class="docutils literal"><span class="pre">site.conf</span></code> to <code class="docutils literal"><span class="pre">default.conf</span></code>.
+The base image already has a <code class="docutils literal"><span class="pre">CMD</span></code> that will start Nginx.</p>
+<div class="highlight-Dockerfile"><div class="highlight"><pre><span></span><span class="c"># nginx/Dockerfile</span>
+<span class="k">FROM</span><span class="s"> nginx:stable</span>
+
+COPY ./config/site.conf /etc/nginx/conf.d/default.conf
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="the-compose-file">
+    <hgroup>
+      <h3>The compose file</h3>
+    </hgroup>
+    <article class="">
+      <p>Let's connect them using <code class="docutils literal"><span class="pre">docker-compose</span></code>:</p>
+<div class="highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">django</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./django</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">/srv/django/static</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">/srv/django/dbdata</span>
+
+<span class="l l-Scalar l-Scalar-Plain">nginx</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./nginx</span>
+    <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="s">&quot;8080:80&quot;</span>
+    <span class="l l-Scalar l-Scalar-Plain">links</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">django:django</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes_from</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">django</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="starting-it-up">
+    <hgroup>
+      <h3>Starting it up</h3>
+    </hgroup>
+    <article class="">
+      <p>To run this, simple execute</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-compose build
+docker-compose up
+</pre></div>
+</div>
+<p>Nice, it's running!</p>
+<div class="tinycode highlight-console"><div class="highlight"><pre><span></span><span class="gp">$</span> docker-compose ps
+<span class="go">       Name                     Command               State               Ports</span>
+<span class="go">-----------------------------------------------------------------------------------------------------</span>
+<span class="go">uwsginginx_django_1   /usr/local/bin/entrypoint  ...   Up      8000/tcp</span>
+<span class="go">uwsginginx_nginx_1    nginx -g daemon off;             Up      443/tcp, 0.0.0.0:8080-&gt;80/tcp</span>
+</pre></div>
+</div>
+<p>Well, that wasn't too crazy. But wait... We forgot <code class="docutils literal"><span class="pre">PostgreSQL</span></code> and we are using <code class="docutils literal"><span class="pre">SQLite</span></code> as database backend. :(</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="adding-postgres">
+    <hgroup>
+      <h2>Adding postgres</h2>
+    </hgroup>
+    <article class="">
+      <p>Removing <code class="docutils literal"><span class="pre">dbdata</span></code> and adding a link between the <code class="docutils literal"><span class="pre">django</span></code> and <code class="docutils literal"><span class="pre">db</span></code> containers.</p>
+<div class="mediumcode highlight-udiff"><div class="highlight"><pre><span></span><span class="gd">--- ../code/uwsgi-nginx/docker-compose.yml</span>
+<span class="gi">+++ ../code/postgres/docker-compose.yml</span>
+<span class="gu">@@ -2,7 +2,8 @@</span>
+     build: ./django
+     volumes:
+         - /srv/django/static
+<span class="gd">-        - /srv/django/dbdata</span>
+<span class="gi">+    links:</span>
+<span class="gi">+        - db:db</span>
+ 
+ nginx:
+     build: ./nginx
+<span class="gu">@@ -12,3 +13,6 @@</span>
+         - django:django
+     volumes_from:
+         - django
+<span class="gi">+</span>
+<span class="gi">+db:</span>
+<span class="gi">+    image: postgres</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="update-django-settings">
+    <hgroup>
+      <h3>Update Django settings</h3>
+    </hgroup>
+    <article class="">
+      <p>Swap out the database settings.</p>
+<div class="highlight-udiff"><div class="highlight"><pre><span></span><span class="gd">--- ../code/uwsgi-nginx/django/src/project/settings.py</span>
+<span class="gi">+++ ../code/postgres/django/src/project/settings.py</span>
+<span class="gu">@@ -79,8 +79,11 @@</span>
+ 
+ DATABASES = {
+     &#39;default&#39;: {
+<span class="gd">-        &#39;ENGINE&#39;: &#39;django.db.backends.sqlite3&#39;,</span>
+<span class="gd">-        &#39;NAME&#39;: os.path.join(BASE_DIR, &#39;dbdata&#39;, &#39;db.sqlite3&#39;),</span>
+<span class="gi">+        &#39;ENGINE&#39;: &#39;django.db.backends.postgresql_psycopg2&#39;,</span>
+<span class="gi">+        &#39;NAME&#39;: &#39;postgres&#39;,</span>
+<span class="gi">+        &#39;USER&#39;: &#39;postgres&#39;,</span>
+<span class="gi">+        &#39;HOST&#39;: &#39;db&#39;,</span>
+<span class="gi">+        &#39;PORT&#39;: 5432,</span>
+     }
+ }
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="build-and-run">
+    <hgroup>
+      <h3>Build and run!</h3>
+    </hgroup>
+    <article class="">
+      <p>To start it, we first need to run the database migrations against the db container.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-compose build
+docker-compose run django ./bootstrap-dev
+docker-compose up
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="javascript-frontend">
+    <hgroup>
+      <h2>JavaScript frontend</h2>
+    </hgroup>
+    <article class="">
+      <p>We use a <code class="docutils literal"><span class="pre">React</span></code> with <code class="docutils literal"><span class="pre">Redux</span></code> to manage application state. We use <code class="docutils literal"><span class="pre">Webpack</span></code> via <code class="docutils literal"><span class="pre">NodeJS</span> <span class="pre">API</span></code> to build a bundle from <code class="docutils literal"><span class="pre">index.jsx</span></code> and output into <code class="docutils literal"><span class="pre">dist</span></code>.</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>.
+├── app
+│   ├── actions [d]
+│   ├── components [d]
+│   ├── containers [d]
+│   ├── reducers [d]
+│   ├── store [d]
+│   ├── styles [d]
+│   ├── index.html
+│   └── index.jsx
+├── dist [d]
+├── package.json
+├── server.js
+└── webpack.config.js
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="webpack-config">
+    <hgroup>
+      <h3>Webpack config</h3>
+    </hgroup>
+    <article class="">
+      <p>Webpack will bundle our <code class="docutils literal"><span class="pre">ES6</span></code> code into a single bundle using <code class="docutils literal"><span class="pre">babel</span></code>.</p>
+<p>We use <code class="docutils literal"><span class="pre">webpack</span> <span class="pre">dev</span> <span class="pre">server</span></code> to serve the app and proxy requests to the <code class="docutils literal"><span class="pre">REST</span> <span class="pre">API</span></code> during development.</p>
+<div class="tinycode highlight-javascript"><div class="highlight"><pre><span></span><span class="kd">var</span> <span class="nx">webpack</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s2">&quot;webpack&quot;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">HtmlWebpackPlugin</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;html-webpack-plugin&#39;</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">combineLoaders</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;webpack-combine-loaders&#39;</span><span class="p">)</span>
+<span class="kd">var</span> <span class="nx">path</span> <span class="o">=</span> <span class="nx">require</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">);</span>
+
+<span class="kd">var</span> <span class="nx">webpackConfig</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="nx">entry</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">bundle</span><span class="o">:</span> <span class="p">[</span>
+      <span class="s1">&#39;webpack-dev-server/client?http://localhost:8000&#39;</span><span class="p">,</span>
+      <span class="s1">&#39;webpack/hot/only-dev-server&#39;</span><span class="p">,</span>
+      <span class="s1">&#39;babel-polyfill&#39;</span><span class="p">,</span>
+<span class="hll">      <span class="s1">&#39;./app/index.jsx&#39;</span>
+</span>    <span class="p">]</span>
+  <span class="p">},</span>
+  <span class="nx">output</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">path</span><span class="o">:</span> <span class="nx">path</span><span class="p">.</span><span class="nx">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span> <span class="s1">&#39;dist&#39;</span><span class="p">),</span>
+<span class="hll">    <span class="nx">filename</span><span class="o">:</span> <span class="s1">&#39;js/[name].[hash].js&#39;</span><span class="p">,</span>
+</span>    <span class="nx">publicPath</span><span class="o">:</span> <span class="s1">&#39;/&#39;</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="a-bunch-of-js-packages">
+    <hgroup>
+      <h3>A bunch of JS packages</h3>
+    </hgroup>
+    <article class="">
+      <p>How an 11 line code dependency manages to break everything</p>
+<div class="minicode highlight-javascript"><div class="highlight"><pre><span></span>  <span class="s2">&quot;dependencies&quot;</span><span class="o">:</span> <span class="p">{</span>
+    <span class="s2">&quot;isomorphic-fetch&quot;</span><span class="o">:</span> <span class="s2">&quot;^2.2.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;react&quot;</span><span class="o">:</span> <span class="s2">&quot;^15.0.2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;react-dom&quot;</span><span class="o">:</span> <span class="s2">&quot;^15.0.2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;react-redux&quot;</span><span class="o">:</span> <span class="s2">&quot;^4.4.5&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;react-router&quot;</span><span class="o">:</span> <span class="s2">&quot;^2.4.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;react-router-redux&quot;</span><span class="o">:</span> <span class="s2">&quot;^4.0.4&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux&quot;</span><span class="o">:</span> <span class="s2">&quot;^3.5.2&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux-form&quot;</span><span class="o">:</span> <span class="s2">&quot;^5.2.3&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux-logger&quot;</span><span class="o">:</span> <span class="s2">&quot;^2.6.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux-thunk&quot;</span><span class="o">:</span> <span class="s2">&quot;^2.1.0&quot;</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;devDependencies&quot;</span><span class="o">:</span> <span class="p">{</span>
+    <span class="s2">&quot;babel-core&quot;</span><span class="o">:</span> <span class="s2">&quot;^6.8.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;babel-loader&quot;</span><span class="o">:</span> <span class="s2">&quot;^6.2.4&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;babel-plugin-transform-object-rest-spread&quot;</span><span class="o">:</span> <span class="s2">&quot;^6.8.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;babel-polyfill&quot;</span><span class="o">:</span> <span class="s2">&quot;^6.8.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;babel-preset-es2015&quot;</span><span class="o">:</span> <span class="s2">&quot;^6.6.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;babel-preset-react&quot;</span><span class="o">:</span> <span class="s2">&quot;^6.5.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;css-loader&quot;</span><span class="o">:</span> <span class="s2">&quot;^0.23.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;html-webpack-plugin&quot;</span><span class="o">:</span> <span class="s2">&quot;^2.16.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;node-sass&quot;</span><span class="o">:</span> <span class="s2">&quot;^3.7.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;react-hot-loader&quot;</span><span class="o">:</span> <span class="s2">&quot;^1.3.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux-devtools&quot;</span><span class="o">:</span> <span class="s2">&quot;^3.3.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux-devtools-dock-monitor&quot;</span><span class="o">:</span> <span class="s2">&quot;^1.1.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;redux-devtools-log-monitor&quot;</span><span class="o">:</span> <span class="s2">&quot;^1.0.11&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;sass-loader&quot;</span><span class="o">:</span> <span class="s2">&quot;^3.2.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;style-loader&quot;</span><span class="o">:</span> <span class="s2">&quot;^0.13.1&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;webpack&quot;</span><span class="o">:</span> <span class="s2">&quot;^1.13.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;webpack-combine-loaders&quot;</span><span class="o">:</span> <span class="s2">&quot;^2.0.0&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;webpack-dev-server&quot;</span><span class="o">:</span> <span class="s2">&quot;^1.14.1&quot;</span>
+  <span class="p">}</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="the-dockerfile">
+    <hgroup>
+      <h3>The Dockerfile</h3>
+    </hgroup>
+    <article class="">
+      <div class="highlight-Dockerfile"><div class="highlight"><pre><span></span><span class="k">FROM</span><span class="s"> node:4</span>
+
+<span class="k">RUN</span> npm install -g webpack
+
+<span class="k">RUN</span> useradd -s /bin/bash --uid <span class="m">1000</span> --home-dir /srv/react react
+COPY src /srv/react
+
+<span class="k">WORKDIR</span><span class="s"> /srv/react</span>
+<span class="k">RUN</span> mkdir dist
+<span class="k">RUN</span> chown -R react:react .
+USER react
+
+<span class="k">RUN</span> npm install
+
+<span class="k">CMD</span><span class="s"> [ &quot;webpack&quot;]</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="id1">
+    <hgroup>
+      <h3>The compose file</h3>
+    </hgroup>
+    <article class="">
+      <p>Let's add the <code class="docutils literal"><span class="pre">react</span></code> to <code class="docutils literal"><span class="pre">docker-compose.yml</span></code> and add a link for the data volume.</p>
+<div class="mediumcode highlight-udiff"><div class="highlight"><pre><span></span><span class="gd">--- ../code/postgres/docker-compose.yml</span>
+<span class="gi">+++ ../code/nodejs/docker-compose.yml</span>
+<span class="gu">@@ -13,6 +13,12 @@</span>
+         - django:django
+     volumes_from:
+         - django
+<span class="gi">+        - react</span>
+<span class="gi">+</span>
+<span class="gi">+react:</span>
+<span class="gi">+    build: ./react</span>
+<span class="gi">+    volumes:</span>
+<span class="gi">+        - /srv/react/dist</span>
+ 
+ db:
+     image: postgres
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="nginx-config-update">
+    <hgroup>
+      <h3>Nginx config update</h3>
+    </hgroup>
+    <article class="">
+      <p>Let <code class="docutils literal"><span class="pre">nginx</span></code> handle routing and static files. It's pretty good at that!</p>
+<div class="tinycode highlight-udiff"><div class="highlight"><pre><span></span><span class="gd">--- ../code/postgres/nginx/config/site.conf</span>
+<span class="gi">+++ ../code/nodejs/nginx/config/site.conf</span>
+<span class="gu">@@ -10,9 +10,17 @@</span>
+         alias /srv/django/static/; # STATIC_ROOT
+         expires 30d;
+     }
+<span class="gd">-    location / {</span>
+<span class="gi">+    location ~ ^/(api|api-token-auth|admin)(/?|/.*)$ {</span>
+         include uwsgi_params;
+         uwsgi_pass django;
+     }
+<span class="gi">+    location ~* ^/(js|css)/.*$ {</span>
+<span class="gi">+        alias /srv/react/dist/; # REACT_ROOT</span>
+<span class="gi">+        try_files $uri =404;</span>
+<span class="gi">+    }</span>
+<span class="gi">+    location / {</span>
+<span class="gi">+        alias /srv/react/dist/; # REACT_ROOT</span>
+<span class="gi">+        try_files $uri /index.html;</span>
+<span class="gi">+    }</span>
+ }
+ 
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="you-know-this-step-by-now">
+    <hgroup>
+      <h3>You know this step by now!</h3>
+    </hgroup>
+    <article class="">
+      <p>Let's fire it up:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-compose build
+docker-compose run django ./bootstrap-dev
+docker-compose up
+</pre></div>
+</div>
+<p>We're up and running. The <code class="docutils literal"><span class="pre">react</span></code> container exited early since it just had a build step.</p>
+<div class="tinycode highlight-console"><div class="highlight"><pre><span></span><span class="gp">$</span> docker-compose ps
+<span class="go">     Name                    Command               State                Ports</span>
+<span class="go">-----------------------------------------------------------------------------------------</span>
+<span class="go">nodejs_db_1       /docker-entrypoint.sh postgres   Up       5432/tcp</span>
+<span class="go">nodejs_django_1   /usr/local/bin/entrypoint  ...   Up       8000/tcp</span>
+<span class="go">nodejs_nginx_1    nginx -g daemon off;             Up       443/tcp, 0.0.0.0:8080-&gt;80/tcp</span>
+<span class="go">nodejs_react_1    webpack                          Exit 0</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="making-it-dev-friendly">
+    <hgroup>
+      <h2>Making it dev-friendly</h2>
+    </hgroup>
+    <article class="">
+      <p>Expose <code class="docutils literal"><span class="pre">webpack-dev-server</span></code> from the react container. We don't want to build containers everytime we change the code. Let's mount some volumes!</p>
+<div class="minicode highlight-yaml"><div class="highlight"><pre><span></span><span class="l l-Scalar l-Scalar-Plain">django</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./django</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./django/src:/srv/django</span>
+    <span class="l l-Scalar l-Scalar-Plain">links</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">db:db</span>
+
+<span class="l l-Scalar l-Scalar-Plain">nginx</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./nginx</span>
+    <span class="l l-Scalar l-Scalar-Plain">links</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">django:django</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes_from</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">django</span>
+
+<span class="l l-Scalar l-Scalar-Plain">react</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">build</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">./react</span>
+    <span class="l l-Scalar l-Scalar-Plain">command</span><span class="p p-Indicator">:</span> <span class="p p-Indicator">[</span><span class="nv">npm</span><span class="p p-Indicator">,</span> <span class="nv">start</span><span class="p p-Indicator">]</span>
+    <span class="l l-Scalar l-Scalar-Plain">volumes</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">./react/src:/srv/react</span>
+    <span class="l l-Scalar l-Scalar-Plain">ports</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="s">&quot;8000:8000&quot;</span>
+    <span class="l l-Scalar l-Scalar-Plain">links</span><span class="p p-Indicator">:</span>
+        <span class="p p-Indicator">-</span> <span class="l l-Scalar l-Scalar-Plain">nginx:nginx</span>
+
+<span class="l l-Scalar l-Scalar-Plain">db</span><span class="p p-Indicator">:</span>
+    <span class="l l-Scalar l-Scalar-Plain">image</span><span class="p p-Indicator">:</span> <span class="l l-Scalar l-Scalar-Plain">postgres</span>
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="build-run-have-fun">
+    <hgroup>
+      <h3>Build, Run, Have fun</h3>
+    </hgroup>
+    <article class="">
+      <p>The usual stuff, but we also need to install <code class="docutils literal"><span class="pre">node</span></code> and <code class="docutils literal"><span class="pre">python</span></code> packages in the mounted volumes.</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-compose -f docker-compose.dev.yml build
+docker-compose -f docker-compose.dev.yml run django ./bootstrap-dev
+docker-compose -f docker-compose.dev.yml run react npm install
+docker-compose -f docker-compose.dev.yml up
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="docker-machine">
+    <hgroup>
+      <h2>Docker Machine</h2>
+    </hgroup>
+    <article class="">
+      <p>Provisioning can be automated with Docker Machine.</p>
+<a class="reference internal image-reference" href="_images/machine.png"><img alt="_images/machine.png" src="_images/machine.png" style="width: 25%;" /></a>
+<p>It can be used to set up Docker in a local VM or on cloud providers. It can configure your local Docker client to transparently talk to remote Docker Engines.</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="cross-platform-support">
+    <hgroup>
+      <h3>Cross platform support</h3>
+    </hgroup>
+    <article class="">
+      <p>If you are on a non-linux system, you can run the docker daemon in a VM using <code class="docutils literal"><span class="pre">docker-machine</span></code>. Provision a local VM with</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-machine create
+</pre></div>
+</div>
+<p>This will create a VM with the name <code class="docutils literal"><span class="pre">default</span></code>. To make docker talk to the new machine, we need to set some <code class="docutils literal"><span class="pre">ENV</span></code>-variables</p>
+<div class="highlight-console"><div class="highlight"><pre><span></span><span class="gp">$</span> docker-machine env default
+<span class="go">export DOCKER_TLS_VERIFY=&quot;1&quot;</span>
+<span class="go">export DOCKER_HOST=&quot;tcp://172.16.62.130:2376&quot;</span>
+<span class="go">export DOCKER_CERT_PATH=&quot;/Users/&lt;yourusername&gt;/.docker/machine/machines/default&quot;</span>
+<span class="go">export DOCKER_MACHINE_NAME=&quot;default&quot;</span>
+<span class="gp">#</span> Run this <span class="nb">command</span> to configure your shell:
+<span class="gp">#</span> <span class="nb">eval</span> <span class="s2">&quot;</span><span class="k">$(</span>docker-machine env default<span class="k">)</span><span class="s2">&quot;</span>
+</pre></div>
+</div>
+<p>Don't worry, Docker for Windows and OS X is in beta!</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-3" id="provision-hosts-on-cloud-providers">
+    <hgroup>
+      <h3>Provision hosts on cloud providers</h3>
+    </hgroup>
+    <article class="">
+      <p>Docker Machine can also be used to provision hosts on the cloud, e.g. AWS:</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-machine create --driver amazonec2 <span class="se">\</span>
+    --amazonec2-access-key AKI******* --amazonec2-secret-key 8T93C******* <span class="se">\</span>
+    aws-sandbox
+</pre></div>
+</div>
+<p>Some other drivers include:</p>
+<ul class="simple">
+<li>Microsoft Azure</li>
+<li>Digital Ocean</li>
+<li>Google Compute Engine</li>
+<li>OpenStack</li>
+</ul>
+<p>You can also create machines on existing VMs/hosts with the generic driver</p>
+<div class="highlight-bash"><div class="highlight"><pre><span></span>docker-machine create --driver generic --generic-ip-address<span class="o">=</span>&lt;ip&gt; <span class="se">\</span>
+    --generic-ssh-key<span class="o">=</span><span class="nv">$HOME</span>/.ssh/id_rsa &lt;name&gt;
+</pre></div>
+</div>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="docker-swarm">
+    <hgroup>
+      <h2>Docker Swarm</h2>
+    </hgroup>
+    <article class="">
+      <p>Docker Swarm provides native clustering for Docker. It turns multiple hosts into a single virtual Docker host.</p>
+<a class="reference internal image-reference" href="_images/docker-swarm-hero2.png"><img alt="_images/docker-swarm-hero2.png" src="_images/docker-swarm-hero2.png" style="width: 25%;" /></a>
+<p>It serves the standard Docker API, so you can still use tools like <code class="docutils literal"><span class="pre">docker-compose</span></code> and scale up to thousands of nodes.</p>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="recap">
+    <hgroup>
+      <h2>Recap</h2>
+    </hgroup>
+    <article class="">
+      <a class="reference internal image-reference" href="_images/docker_vector_h-dark-trans.svg"><img src="_images/docker_vector_h-dark-trans.svg" width="25%" /></a>
+<a class="reference internal image-reference" href="_images/Compose.png"><img alt="_images/Compose.png" src="_images/Compose.png" style="width: 10%;" /></a>
+<a class="reference internal image-reference" href="_images/machine.png"><img alt="_images/machine.png" src="_images/machine.png" style="width: 10%;" /></a>
+<a class="reference internal image-reference" href="_images/docker-swarm-hero2.png"><img alt="_images/docker-swarm-hero2.png" src="_images/docker-swarm-hero2.png" style="width: 10%;" /></a>
+<ul class="simple">
+<li>Docker Engine to manage single containers</li>
+<li>Docker Compose for multi-container applications</li>
+<li>Docker Machine to manage remote Docker hosts</li>
+<li>Docker Swarm to turn a pool of Docker hosts into a single virtual host</li>
+</ul>
+
+
+
+
+    </article>
+  </slide>  <slide class="level-2" id="thank-you">
+    <hgroup>
+      <h2>Thank you!</h2>
+    </hgroup>
+    <article class="">
+      <p>Questions?</p>
+
+
+
+
+    </article>
+  </slide>
+
+
+  
+
+  <slide class="backdrop"></slide>
+
+</slides>
+
+<!--[if IE]>
+  <script src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+  <script>CFInstall.check({mode: 'overlay'});</script>
+<![endif]-->
+</body>
+</html>
